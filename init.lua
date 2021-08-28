@@ -34,7 +34,7 @@ mcl_damage.register_modifier(function(obj, damage, reason)
         and mcl_shields.types[type]
         and reason.direct then
                 if vector.dot(obj:get_look_dir(), vector.subtract(reason.direct:get_pos(), obj:get_pos())) >= 0
-                or (type == "arrow" or type = "fireball") then
+                or (type == "arrow" or type == "fireball") then
                         local item = obj:get_wielded_item()
                         item:add_wear(65535 / 336)
                         obj:set_wielded_item(item)
