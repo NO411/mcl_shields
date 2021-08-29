@@ -60,7 +60,7 @@ local function add_shield(player)
                         hud_elem_type = "image",
                         position = { x = 0.5, y = 0.5 },
                         scale = { x = -100, y = -100 },
-                        text = "mcl_shields_hud.png",
+                        text = "mcl_shield_hud.png",
                 })
                 player:hud_set_flags({ wielditem = false })
                 playerphysics.add_physics_factor(player, "speed", "shield_speed", 0.5)
