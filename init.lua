@@ -19,18 +19,21 @@ minetest.register_tool("mcl_shields:shield",{
         groups = { weapon = 1 },
         sound = { breaks = "default_tool_breaks" },
 	_repair_material = "group:wood",
-        _mcl_toollike_wield = true,
+        wield_scale = { x = 2, y = 2, z = 2 },
 })
 
-local function wield_item(obj)
-        return obj:get_wielded_item():get_name()
+function mcl_shields.wielding_shield(obj)
+        return obj:get_wielded_item():get_name():find("mcl_shields:shield")
+end
+
+function mcl_shields.is_blocking(obj)
+        return mcl_shields.wielding_shield(obj) and obj:get_player_control().RMB
 end
 
 mcl_damage.register_modifier(function(obj, damage, reason)
         local type = reason.type
         if obj:is_player()
-        and wield_item(obj) == "mcl_shields:shield"
-        and obj:get_player_control().RMB
+        and mcl_shields.is_blocking(obj)
         and mcl_shields.types[type]
         and reason.direct then
                 if vector.dot(obj:get_look_dir(), vector.subtract(reason.direct:get_pos(), obj:get_pos())) >= 0
@@ -48,14 +51,14 @@ minetest.register_craft({
 	recipe = {
 		{ "group:wood", "mcl_core:iron_ingot", "group:wood" },
                 { "group:wood", "group:wood", "group:wood" },
-                { "", "group:wood", "" },
+                { "", "group:wood", ""},
 	}
 })
 
 local shield_hud = {}
 
 local function add_shield(player)
-        if wield_item(player) == "mcl_shields:shield" then
+        if mcl_shields.wielding_shield(player) then
                 shield_hud[player] = player:hud_add({
                         hud_elem_type = "image",
                         position = { x = 0.5, y = 0.5 },
@@ -88,7 +91,7 @@ end)
 
 controls.register_on_hold(function(player, key, time)
         if key ~= "RMB" then return end
-        if wield_item(player) == "mcl_shields:shield" then
+        if mcl_shields.wielding_shield(player) then
                 if shield_hud[player] == nil then
                         add_shield(player)
                 end
@@ -105,4 +108,61 @@ end)
 
 minetest.register_on_leaveplayer(function(player)
         shield_hud[player] = nil
+end)
+
+local player_set_animation = mcl_player.player_set_animation
+local player_attached = mcl_player.player_attached
+
+local function get_mouse_button(player)
+	local controls = player:get_player_control()
+	if controls.RMB or controls.LMB then
+		return true
+	else
+		return false
+	end
+end
+
+minetest.register_globalstep(function(dtime)
+	for _, player in pairs(minetest.get_connected_players()) do
+                if mcl_shields.is_blocking(player) then
+                        local name = player:get_player_name()
+                        local controls = player:get_player_control()
+                        local sneak = controls.sneak
+			local walking = false
+			local speed = 15
+			if controls.up or controls.down or controls.left or controls.right then
+				walking = true
+			end
+			if sneak then
+				speed = speed / 2
+			end
+			local head_in_water = minetest.get_item_group(mcl_playerinfo[name].node_head, "water") ~= 0
+			local is_sprinting = mcl_sprint.is_sprinting(name)
+			local velocity = player:get_velocity() or player:get_player_velocity()
+			if player:get_hp() == 0 then
+				player_set_animation(player, "die")
+			elseif walking and velocity.x > 0.35
+			or walking and velocity.x < -0.35
+			or walking and velocity.z > 0.35
+			or walking and velocity.z < -0.35 then
+				if not sneak and head_in_water and is_sprinting then
+					player_set_animation(player, "swim_walk", speed)
+				elseif is_sprinting and not sneak and not head_in_water then
+					player_set_animation(player, "run_walk", speed)
+				elseif sneak then
+					player_set_animation(player, "sneak_walk", speed)
+				else
+					player_set_animation(player, "walk", speed)
+				end
+			elseif not get_mouse_button(player) and not sneak and head_in_water and is_sprinting then
+				player_set_animation(player, "swim_stand")
+			elseif not sneak and head_in_water and is_sprinting then
+				player_set_animation(player, "swim_stand", speed)
+			elseif not sneak then
+				player_set_animation(player, "stand", speed)
+			else
+				player_set_animation(player, "sneak_stand", speed)
+			end
+		end
+	end
 end)
