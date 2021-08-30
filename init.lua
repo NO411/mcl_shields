@@ -7,7 +7,6 @@ mcl_shields = {
 		player = true,
 		arrow = true,
 		fireball = true,
-		explosion = true,
         },
 }
 
