@@ -123,8 +123,8 @@ end
 
 minetest.register_globalstep(function(dtime)
 	for _, player in pairs(minetest.get_connected_players()) do
-                if mcl_shields.is_blocking(player) then
-                        local name = player:get_player_name()
+                local name = player:get_player_name()
+                if mcl_shields.is_blocking(player) and not mcl_player.player_attached[name] then
                         local controls = player:get_player_control()
                         local sneak = controls.sneak
 			local walking = false
@@ -165,3 +165,4 @@ minetest.register_globalstep(function(dtime)
 		end
 	end
 end)
+
