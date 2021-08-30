@@ -8,37 +8,60 @@ mcl_shields = {
 		arrow = true,
 		fireball = true,
         },
+        enchantments = { "mending", "unbreaking" },
 }
+
+local overlay = mcl_enchanting.overlay
+local hud = "mcl_shield_hud.png"
 
 minetest.register_tool("mcl_shields:shield",{
         description = S("Shield"),
         _doc_items_longdesc = S("A shield is a tool used for protecting the player against attacks."),
         inventory_image = "mcl_shield.png",
         stack_max = 1,
-        groups = { weapon = 1 },
+        groups = { shield = 1, weapon = 1, enchantability = 1 },
         sound = { breaks = "default_tool_breaks" },
 	_repair_material = "group:wood",
         wield_scale = { x = 2, y = 2, z = 2 },
 })
 
+for _, e in pairs(mcl_shields.enchantments) do
+        mcl_enchanting.enchantments[e].secondary.shield = true
+end
+
+local function wielded_item(obj)
+        return obj:get_wielded_item():get_name()
+end
+
 function mcl_shields.wielding_shield(obj)
-        return obj:get_wielded_item():get_name():find("mcl_shields:shield")
+        return wielded_item(obj):find("mcl_shields:shield")
+end
+
+function mcl_shields.is_enchanted(obj)
+        return wielded_item(obj):find("mcl_shields:shield_enchanted")
 end
 
 function mcl_shields.is_blocking(obj)
         return mcl_shields.wielding_shield(obj) and obj:get_player_control().RMB
 end
 
+local types = mcl_shields.types
+
 mcl_damage.register_modifier(function(obj, damage, reason)
         local type = reason.type
         if obj:is_player()
         and mcl_shields.is_blocking(obj)
-        and mcl_shields.types[type]
+        and types[type]
         and reason.direct then
                 if vector.dot(obj:get_look_dir(), vector.subtract(reason.direct:get_pos(), obj:get_pos())) >= 0
-                or (type == "arrow" or type == "fireball") then
+                or (type == types[3] or type == types[4]) then
                         local item = obj:get_wielded_item()
-                        item:add_wear(65535 / 336)
+                        local durability = 336
+                        local unbreaking = mcl_enchanting.get_enchantment(item, mcl_shields.enchantments[2])
+                        if unbreaking > 0 then
+                                durability = durability * (unbreaking + 1)
+                        end
+                        item:add_wear(65535 / durability)
                         obj:set_wielded_item(item)
                         return 0
                 end
@@ -58,11 +81,15 @@ local shield_hud = {}
 
 local function add_shield(player)
         if mcl_shields.wielding_shield(player) then
+                local texture = hud
+                if mcl_shields.is_enchanted(player) then
+                        texture = texture .. overlay
+                end
                 shield_hud[player] = player:hud_add({
                         hud_elem_type = "image",
                         position = { x = 0.5, y = 0.5 },
                         scale = { x = -100, y = -100 },
-                        text = "mcl_shield_hud.png",
+                        text = texture,
                 })
                 player:hud_set_flags({ wielditem = false })
                 playerphysics.add_physics_factor(player, "speed", "shield_speed", 0.5)
@@ -93,8 +120,15 @@ controls.register_on_hold(function(player, key, time)
         if mcl_shields.wielding_shield(player) then
                 if shield_hud[player] == nil then
                         add_shield(player)
+                else
+                        local image = player:hud_get(shield_hud[player]).text
+                        if mcl_shields.is_enchanted(player) and image == hud then
+                                player:hud_change(shield_hud[player], "text", hud .. overlay)
+                        elseif not mcl_shields.is_enchanted(player) and image == hud .. overlay then
+                                player:hud_change(shield_hud[player], "text", hud)
+                        end
                 end
-        else 
+        else
                 remove_shield(player)
         end
 end)
@@ -165,4 +199,3 @@ minetest.register_globalstep(function(dtime)
 		end
 	end
 end)
-
