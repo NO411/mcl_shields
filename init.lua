@@ -74,7 +74,7 @@ minetest.register_craft({
 	recipe = {
 		{ "group:wood", "mcl_core:iron_ingot", "group:wood" },
                 { "group:wood", "group:wood", "group:wood" },
-                { "", "group:wood", ""},
+                { "", "group:wood", "" },
 	}
 })
 
