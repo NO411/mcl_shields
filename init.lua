@@ -6,7 +6,7 @@ mcl_shields = {
 		mob = true,
 		player = true,
 		arrow = true,
-		fireball = true,
+		fireball = true, -- does not really work
         },
         enchantments = { "mending", "unbreaking" },
 }
@@ -49,12 +49,13 @@ local types = mcl_shields.types
 
 mcl_damage.register_modifier(function(obj, damage, reason)
         local type = reason.type
-        if obj:is_player()
-        and mcl_shields.is_blocking(obj)
-        and types[type]
-        and reason.direct then
-                if vector.dot(obj:get_look_dir(), vector.subtract(reason.direct:get_pos(), obj:get_pos())) >= 0
-                or (type == "arrow" or type == "fireball") then
+        local damager = reason.direct
+        if obj:is_player() and mcl_shields.is_blocking(obj) and types[type] and damager then
+                local entity = damager:get_luaentity()
+                if entity and type == "arrow" then
+                        damager = entity._shooter
+                end
+                if vector.dot(obj:get_look_dir(), vector.subtract(damager:get_pos(), obj:get_pos())) >= 0 or type == "fireball" then
                         local item = obj:get_wielded_item()
                         local durability = 336
                         local unbreaking = mcl_enchanting.get_enchantment(item, mcl_shields.enchantments[2])
